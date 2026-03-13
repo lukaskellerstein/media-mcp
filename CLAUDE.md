@@ -1,3 +1,7 @@
+# IMPORTANT
+
+Use `uv build` and `uv publish`, when building and publishing project to `Pypi`.
+
 # Development Workflow (Code Quality)
 
 ## Before Writing Code

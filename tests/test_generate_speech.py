@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 import io
 import wave
+from pathlib import Path
 
 import pytest
 
@@ -91,3 +92,34 @@ async def test_speech_empty_text_returns_validation_error(mock_ctx):
     assert result.isError is True
     assert isinstance(result.content[0], TextContent)
     assert "[validation]" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_speech_with_output_dir_returns_file_path(mock_ctx_with_output_dir):
+    """When MEDIA_OUTPUT_DIR is set, generate_speech saves to disk and returns only the file path."""
+    result = await generate_speech(
+        text="Hello world",
+        model="flash-tts",
+        ctx=mock_ctx_with_output_dir,
+    )
+
+    assert not result.isError, f"Tool returned error: {result.content}"
+
+    # Should return only TextContent, no AudioContent
+    audio_parts = [c for c in result.content if isinstance(c, AudioContent)]
+    assert len(audio_parts) == 0, "Expected no AudioContent when output_dir is set"
+
+    text_parts = [c for c in result.content if isinstance(c, TextContent)]
+    assert len(text_parts) == 1
+
+    path_text = text_parts[0].text
+    assert "saved to:" in path_text
+
+    file_path = path_text.split("saved to: ")[1].strip()
+    saved = Path(file_path)
+    assert saved.exists(), f"File not found: {file_path}"
+    assert saved.suffix == ".wav"
+    assert saved.stat().st_size > 100, "Saved file is suspiciously small"
+
+    data = saved.read_bytes()
+    assert data[:4] == b"RIFF", "Saved file is not RIFF/WAV"

@@ -26,9 +26,25 @@ def app_context(gemini_api_key: str) -> AppContext:
 
 
 @pytest.fixture()
+def app_context_with_output_dir(gemini_api_key: str, tmp_path) -> AppContext:
+    """AppContext with output_dir set to a temp directory."""
+    client = genai.Client(api_key=gemini_api_key)
+    config = ServerConfig(gemini_api_key=gemini_api_key, output_dir=str(tmp_path))
+    return AppContext(client=client, config=config)
+
+
+@pytest.fixture()
 def mock_ctx(app_context: AppContext) -> AsyncMock:
     ctx = AsyncMock()
     ctx.request_context.lifespan_context = app_context
+    return ctx
+
+
+@pytest.fixture()
+def mock_ctx_with_output_dir(app_context_with_output_dir: AppContext) -> AsyncMock:
+    """Mock context with MEDIA_OUTPUT_DIR configured."""
+    ctx = AsyncMock()
+    ctx.request_context.lifespan_context = app_context_with_output_dir
     return ctx
 
 

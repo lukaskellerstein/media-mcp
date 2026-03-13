@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import io
 import wave
+from pathlib import Path
 
 import pytest
 
@@ -80,3 +81,31 @@ async def test_music_with_bpm_and_scale(mock_ctx):
     assert not result.isError, f"Tool returned error: {result.content}"
     audio_parts = [c for c in result.content if isinstance(c, AudioContent)]
     assert len(audio_parts) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.skip(reason="Lyria RealTime is experimental — endpoint returns 404 for most API keys")
+async def test_music_with_output_dir_returns_file_path(mock_ctx_with_output_dir):
+    """When MEDIA_OUTPUT_DIR is set, generate_music saves to disk and returns only the file path."""
+    result = await generate_music(
+        prompts=[{"text": "calm piano", "weight": 1.0}],
+        duration_seconds=5,
+        ctx=mock_ctx_with_output_dir,
+    )
+
+    assert not result.isError, f"Tool returned error: {result.content}"
+
+    audio_parts = [c for c in result.content if isinstance(c, AudioContent)]
+    assert len(audio_parts) == 0, "Expected no AudioContent when output_dir is set"
+
+    text_parts = [c for c in result.content if isinstance(c, TextContent)]
+    assert len(text_parts) == 1
+
+    path_text = text_parts[0].text
+    assert "saved to:" in path_text
+
+    file_path = path_text.split("saved to: ")[1].strip()
+    saved = Path(file_path)
+    assert saved.exists(), f"File not found: {file_path}"
+    assert saved.suffix == ".wav"
+    assert saved.stat().st_size > 100

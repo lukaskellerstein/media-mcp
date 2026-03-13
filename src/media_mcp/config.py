@@ -25,16 +25,13 @@ class ServerConfig(BaseModel):
     def output_dir_writable(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        path = Path(v)
-        if not path.is_dir():
-            raise ValueError(
-                f"MEDIA_OUTPUT_DIR '{v}' is not an existing directory."
-            )
+        path = Path(v).expanduser().resolve()
+        path.mkdir(parents=True, exist_ok=True)
         if not os.access(path, os.W_OK):
             raise ValueError(
                 f"MEDIA_OUTPUT_DIR '{v}' is not writable."
             )
-        return str(path.resolve())
+        return str(path)
 
 
 def load_config() -> ServerConfig:

@@ -6,6 +6,7 @@ Video generation is async and can take 1-5 minutes per call.
 from __future__ import annotations
 
 import base64
+from pathlib import Path
 
 import pytest
 
@@ -60,3 +61,32 @@ async def test_video_api_error_returns_error_result(mock_ctx):
         assert isinstance(result.content[0], TextContent)
     finally:
         MODEL_MAP["veo-3.1"] = original
+
+
+@pytest.mark.asyncio
+async def test_video_with_output_dir_returns_file_path(mock_ctx_with_output_dir):
+    """When MEDIA_OUTPUT_DIR is set, generate_video saves to disk and returns only the file path."""
+    result = await generate_video(
+        prompt="A calm ocean wave rolling onto a sandy beach, sunny day",
+        model="veo-3.1",
+        aspect_ratio="16:9",
+        ctx=mock_ctx_with_output_dir,
+    )
+
+    assert not result.isError, f"Tool returned error: {result.content}"
+
+    # Should return only TextContent, no EmbeddedResource
+    resource_parts = [c for c in result.content if isinstance(c, EmbeddedResource)]
+    assert len(resource_parts) == 0, "Expected no EmbeddedResource when output_dir is set"
+
+    text_parts = [c for c in result.content if isinstance(c, TextContent)]
+    assert len(text_parts) == 1
+
+    path_text = text_parts[0].text
+    assert "saved to:" in path_text
+
+    file_path = path_text.split("saved to: ")[1].strip()
+    saved = Path(file_path)
+    assert saved.exists(), f"File not found: {file_path}"
+    assert saved.suffix == ".mp4"
+    assert saved.stat().st_size > 1000, "Saved video is suspiciously small"

@@ -41,7 +41,13 @@ export GEMINI_API_KEY="your-gemini-api-key"
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | Yes | Google Gemini API key for authentication |
-| `MEDIA_OUTPUT_DIR` | No | Directory path for saving generated media files. If not set, media is returned as base64 in the response. |
+| `MEDIA_OUTPUT_DIR` | No | Directory path for saving generated media files (see below) |
+
+### Output behavior
+
+When `MEDIA_OUTPUT_DIR` is set, every generated file is saved to that directory and the tool returns **only the file path** — no binary data is included in the response. This is the recommended setup because MCP messages are stored in the conversation history, and large base64 payloads pollute context and waste tokens.
+
+When `MEDIA_OUTPUT_DIR` is **not** set, the server has no filesystem target, so it returns the raw base64-encoded data directly in the response. This works for quick experiments but is not recommended for production use.
 
 ## MCP Client Setup
 
@@ -59,7 +65,8 @@ Add to your `claude_desktop_config.json`:
       "command": "uvx",
       "args": ["media-mcp"],
       "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key"
+        "GEMINI_API_KEY": "your-gemini-api-key",
+        "MEDIA_OUTPUT_DIR": "/path/to/media/output"
       }
     }
   }
@@ -82,7 +89,8 @@ Or add manually to `.mcp.json`:
       "command": "uvx",
       "args": ["media-mcp"],
       "env": {
-        "GEMINI_API_KEY": "${GEMINI_API_KEY}"
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "MEDIA_OUTPUT_DIR": "/path/to/media/output"
       }
     }
   }

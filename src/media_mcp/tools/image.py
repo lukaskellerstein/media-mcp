@@ -93,7 +93,8 @@ def register(mcp: FastMCP) -> None:
         text_parts = []
         image_data = None
 
-        for part in response.candidates[0].content.parts:
+        parts = response.candidates[0].content.parts or []
+        for part in parts:
             if part.text is not None:
                 text_parts.append(part.text)
             elif part.inline_data is not None:
