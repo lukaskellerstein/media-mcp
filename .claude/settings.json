@@ -1,0 +1,28 @@
+{
+  "companyAnnouncements": ["Welcome to Media MCP server"],
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "NotebookEdit",
+      "NotebookRead",
+      "Read",
+      "SlashCommand",
+      "Task",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "Write",
+      "Search",
+      "BashOutput",
+      "KillShell",
+      "Skill",
+      "mcp__playwright",
+      "mcp__shadcn",
+      "mcp__mermaid"
+    ],
+    "deny": ["Bash(rm -rf /)", "Bash(rm -rf ~)"]
+  }
+}

@@ -1,0 +1,20 @@
+[project]
+name = "media-mcp"
+version = "0.1.0"
+description = "MCP server exposing Google Gemini media generation APIs as tools for AI agents"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "google-genai",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+media-mcp = "media_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
