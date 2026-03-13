@@ -18,14 +18,14 @@
       "Search",
       "BashOutput",
       "KillShell",
-      "Skill",
-      "mcp__playwright",
-      "mcp__shadcn",
-      "mcp__mermaid"
+      "Skill"
     ],
     "deny": ["Bash(rm -rf /)", "Bash(rm -rf ~)"]
   },
   "enabledPlugins": {
-    "code-review-toolkit@claude-plugins-official": true
+    "dev-tools-plugin@claude-my-marketplace": true,
+    "documentation-plugin@claude-my-marketplace": true,
+    "infra-plugin@claude-my-marketplace": true,
+    "code-review@claude-plugins-official": true
   }
 }
