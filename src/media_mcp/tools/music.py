@@ -130,19 +130,22 @@ def register(mcp: FastMCP) -> None:
 
         wav_data = pcm_to_wav_music(bytes(audio_data))
 
-        result_content: list = [
-            AudioContent(
-                type="audio",
-                data=encode_base64(wav_data),
-                mimeType="audio/wav",
-            )
-        ]
-
         if app.config.output_dir:
             filename = generate_filename("music", "wav")
             path = save_media_file(wav_data, app.config.output_dir, filename)
-            result_content.append(
-                TextContent(type="text", text=f"Saved to: {path}")
+            return CallToolResult(
+                content=[TextContent(
+                    type="text",
+                    text=f"Music generated and saved to: {path}",
+                )]
             )
 
-        return CallToolResult(content=result_content)
+        return CallToolResult(
+            content=[
+                AudioContent(
+                    type="audio",
+                    data=encode_base64(wav_data),
+                    mimeType="audio/wav",
+                )
+            ]
+        )

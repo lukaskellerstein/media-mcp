@@ -100,19 +100,22 @@ def register(mcp: FastMCP) -> None:
         pcm_data = response.candidates[0].content.parts[0].inline_data.data
         wav_data = pcm_to_wav_speech(pcm_data)
 
-        result_content: list = [
-            AudioContent(
-                type="audio",
-                data=encode_base64(wav_data),
-                mimeType="audio/wav",
-            )
-        ]
-
         if app.config.output_dir:
             filename = generate_filename("speech", "wav")
             path = save_media_file(wav_data, app.config.output_dir, filename)
-            result_content.append(
-                TextContent(type="text", text=f"Saved to: {path}")
+            return CallToolResult(
+                content=[TextContent(
+                    type="text",
+                    text=f"Speech generated and saved to: {path}",
+                )]
             )
 
-        return CallToolResult(content=result_content)
+        return CallToolResult(
+            content=[
+                AudioContent(
+                    type="audio",
+                    data=encode_base64(wav_data),
+                    mimeType="audio/wav",
+                )
+            ]
+        )

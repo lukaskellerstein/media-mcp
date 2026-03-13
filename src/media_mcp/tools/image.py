@@ -90,28 +90,34 @@ def register(mcp: FastMCP) -> None:
                 isError=True,
             )
 
-        result_content = []
-        image_data_for_save = None
+        text_parts = []
+        image_data = None
 
         for part in response.candidates[0].content.parts:
             if part.text is not None:
-                result_content.append(
-                    TextContent(type="text", text=part.text)
-                )
+                text_parts.append(part.text)
             elif part.inline_data is not None:
-                img_bytes = part.inline_data.data
-                image_data_for_save = img_bytes
-                result_content.append(
-                    Image(data=img_bytes, format="png").to_image_content()
-                )
+                image_data = part.inline_data.data
 
-        if app.config.output_dir and image_data_for_save:
+        if app.config.output_dir and image_data:
             filename = generate_filename("image", "png")
             path = save_media_file(
-                image_data_for_save, app.config.output_dir, filename
+                image_data, app.config.output_dir, filename
             )
-            result_content.append(
-                TextContent(type="text", text=f"Saved to: {path}")
-            )
+            result_content = [
+                TextContent(type="text", text=f"Image generated and saved to: {path}"),
+            ]
+            if text_parts:
+                result_content.append(
+                    TextContent(type="text", text="\n".join(text_parts))
+                )
+            return CallToolResult(content=result_content)
 
+        result_content = []
+        for text in text_parts:
+            result_content.append(TextContent(type="text", text=text))
+        if image_data:
+            result_content.append(
+                Image(data=image_data, format="png").to_image_content()
+            )
         return CallToolResult(content=result_content)
