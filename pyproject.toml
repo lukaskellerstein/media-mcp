@@ -2,7 +2,32 @@
 name = "media-mcp"
 version = "0.1.0"
 description = "MCP server exposing Google Gemini media generation APIs as tools for AI agents"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
+authors = [
+    { name = "Lukas Kellerstein" },
+]
+keywords = [
+    "mcp",
+    "gemini",
+    "media-generation",
+    "image-generation",
+    "video-generation",
+    "text-to-speech",
+    "music-generation",
+    "ai-tools",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "mcp[cli]>=1.0.0",
     "google-genai",
@@ -11,6 +36,11 @@ dependencies = [
 
 [project.scripts]
 media-mcp = "media_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/lukaskellerstein/media-mcp"
+Repository = "https://github.com/lukaskellerstein/media-mcp"
+Issues = "https://github.com/lukaskellerstein/media-mcp/issues"
 
 [build-system]
 requires = ["setuptools>=75.0"]
