@@ -207,6 +207,7 @@ Write code you'd be proud to maintain in 2 years.
 ## Active Technologies
 - Python 3.10+ + `mcp` (FastMCP server SDK), `google-genai` (001-media-mcp-server)
 - Filesystem only (optional output directory for media files) (001-media-mcp-server)
+- Python 3.10+ (already configured) + mcp[cli]>=1.0.0, google-genai, pydantic>=2.0 (already configured) (002-stdio-uvx-readme)
 
 ## Recent Changes
 - 001-media-mcp-server: Added Python 3.10+ + `mcp` (FastMCP server SDK), `google-genai`
