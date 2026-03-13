@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
 from typing import Literal
 
 from google.genai import types
@@ -13,6 +12,7 @@ from media_mcp.utils.media import (
     decode_base64,
     encode_base64,
     generate_filename,
+    save_media_file,
 )
 
 MODEL_MAP = {
@@ -121,23 +121,24 @@ def register(mcp: FastMCP) -> None:
 
         generated_video = operation.response.generated_videos[0]
 
+        try:
+            app.client.files.download(file=generated_video.video)
+            video_bytes = generated_video.video.video_bytes
+        except Exception as e:
+            return CallToolResult(
+                content=[TextContent(type="text", text=handle_gemini_error(e))],
+                isError=True,
+            )
+
         if app.config.output_dir:
             filename = generate_filename("video", "mp4")
-            output_path = f"{app.config.output_dir}/{filename}"
-            generated_video.video.save(output_path)
+            path = save_media_file(video_bytes, app.config.output_dir, filename)
             return CallToolResult(
                 content=[TextContent(
                     type="text",
-                    text=f"Video generated and saved to: {output_path}",
+                    text=f"Video generated and saved to: {path}",
                 )]
             )
-
-        # No output_dir: save to temp file, read bytes, return as embedded resource
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-            tmp_path = tmp.name
-        generated_video.video.save(tmp_path)
-        with open(tmp_path, "rb") as f:
-            video_bytes = f.read()
 
         return CallToolResult(
             content=[
