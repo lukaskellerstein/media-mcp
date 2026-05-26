@@ -9,9 +9,9 @@ from mcp.types import CallToolResult, EmbeddedResource, TextContent
 
 from media_mcp.server import AppContext, handle_gemini_error
 from media_mcp.utils.media import (
-    decode_base64,
     encode_base64,
     generate_filename,
+    load_image_bytes,
     save_media_file,
 )
 
@@ -31,9 +31,9 @@ def register(mcp: FastMCP) -> None:
         model: Literal["veo-3.1", "veo-3"] = "veo-3.1",
         aspect_ratio: Literal["16:9", "9:16"] = "16:9",
         resolution: Literal["720p", "1080p", "4K"] | None = None,
-        first_frame_image: str | None = None,
-        last_frame_image: str | None = None,
-        reference_images: list[str] | None = None,
+        first_frame_image: str | None = None,  # file path, data-URI, or base64
+        last_frame_image: str | None = None,  # file path, data-URI, or base64
+        reference_images: list[str] | None = None,  # file paths, data-URIs, or base64
         extend_video_id: str | None = None,
         ctx: Context = None,
     ) -> CallToolResult:
@@ -52,26 +52,32 @@ def register(mcp: FastMCP) -> None:
         if resolution:
             config_kwargs["resolution"] = resolution.lower()
 
-        image_param = None
-        if first_frame_image:
-            img_bytes = decode_base64(first_frame_image)
-            image_param = types.Image(image_bytes=img_bytes)
+        try:
+            image_param = None
+            if first_frame_image:
+                img_bytes, _ = load_image_bytes(first_frame_image)
+                image_param = types.Image(image_bytes=img_bytes)
 
-        if last_frame_image:
-            last_bytes = decode_base64(last_frame_image)
-            config_kwargs["last_frame"] = types.Image(image_bytes=last_bytes)
+            if last_frame_image:
+                last_bytes, _ = load_image_bytes(last_frame_image)
+                config_kwargs["last_frame"] = types.Image(image_bytes=last_bytes)
 
-        if reference_images:
             refs = []
-            for ref_b64 in reference_images[:3]:
-                ref_bytes = decode_base64(ref_b64)
+            for ref in (reference_images or [])[:3]:
+                ref_bytes, _ = load_image_bytes(ref)
                 refs.append(
                     types.VideoGenerationReferenceImage(
                         image=types.Image(image_bytes=ref_bytes),
                         reference_type="asset",
                     )
                 )
-            config_kwargs["reference_images"] = refs
+            if refs:
+                config_kwargs["reference_images"] = refs
+        except ValueError as e:
+            return CallToolResult(
+                content=[TextContent(type="text", text=str(e))],
+                isError=True,
+            )
 
         video_config = types.GenerateVideosConfig(**config_kwargs)
 

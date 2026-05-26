@@ -3,13 +3,15 @@ from __future__ import annotations
 from typing import Literal
 
 from google.genai import types
-from mcp.server.fastmcp import Context, FastMCP, Image
-from mcp.types import CallToolResult, TextContent
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.types import CallToolResult, ImageContent, TextContent
 
 from media_mcp.server import AppContext, handle_gemini_error
 from media_mcp.utils.media import (
-    decode_base64,
+    encode_base64,
+    extension_for_mime,
     generate_filename,
+    load_image_bytes,
     save_media_file,
 )
 
@@ -30,7 +32,7 @@ def register(mcp: FastMCP) -> None:
             "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9",
         ] = "1:1",
         image_size: Literal["512px", "1K", "2K", "4K"] = "1K",
-        reference_images: list[str] | None = None,
+        reference_images: list[str] | None = None,  # file paths, data-URIs, or base64
         response_modalities: list[Literal["TEXT", "IMAGE"]] | None = None,
         thinking_level: Literal["minimal", "high"] = "minimal",
         use_google_search: bool = False,
@@ -63,12 +65,18 @@ def register(mcp: FastMCP) -> None:
 
         contents: list = [prompt]
         if reference_images:
-            for ref_b64 in reference_images:
-                img_bytes = decode_base64(ref_b64)
+            for ref in reference_images:
+                try:
+                    img_bytes, mime_type = load_image_bytes(ref)
+                except ValueError as e:
+                    return CallToolResult(
+                        content=[TextContent(type="text", text=str(e))],
+                        isError=True,
+                    )
                 contents.append(
                     types.Part(
                         inline_data=types.Blob(
-                            mime_type="image/png",
+                            mime_type=mime_type,
                             data=img_bytes,
                         )
                     )
@@ -92,6 +100,7 @@ def register(mcp: FastMCP) -> None:
 
         text_parts = []
         image_data = None
+        image_mime = "image/png"
 
         parts = response.candidates[0].content.parts or []
         for part in parts:
@@ -99,9 +108,12 @@ def register(mcp: FastMCP) -> None:
                 text_parts.append(part.text)
             elif part.inline_data is not None:
                 image_data = part.inline_data.data
+                image_mime = part.inline_data.mime_type or image_mime
+
+        image_ext = extension_for_mime(image_mime)
 
         if app.config.output_dir and image_data:
-            filename = generate_filename("image", "png")
+            filename = generate_filename("image", image_ext)
             path = save_media_file(
                 image_data, app.config.output_dir, filename
             )
@@ -119,6 +131,10 @@ def register(mcp: FastMCP) -> None:
             result_content.append(TextContent(type="text", text=text))
         if image_data:
             result_content.append(
-                Image(data=image_data, format="png").to_image_content()
+                ImageContent(
+                    type="image",
+                    data=encode_base64(image_data),
+                    mimeType=image_mime,
+                )
             )
         return CallToolResult(content=result_content)

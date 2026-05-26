@@ -37,10 +37,18 @@ async def test_image_returns_image_content(mock_ctx):
     )
 
     img = image_parts[0]
-    assert img.mimeType == "image/png", f"Expected image/png, got {img.mimeType}"
+    # Gemini may return PNG or JPEG; the reported mimeType must match the bytes.
+    assert img.mimeType in ("image/png", "image/jpeg", "image/webp"), (
+        f"Unexpected mimeType: {img.mimeType}"
+    )
 
     decoded = base64.b64decode(img.data)
-    assert decoded[:8] == b"\x89PNG\r\n\x1a\n", "Data is not valid PNG"
+    if img.mimeType == "image/png":
+        assert decoded[:8] == b"\x89PNG\r\n\x1a\n", "mimeType png but bytes are not PNG"
+    elif img.mimeType == "image/jpeg":
+        assert decoded[:3] == b"\xff\xd8\xff", "mimeType jpeg but bytes are not JPEG"
+    else:
+        assert decoded[:4] == b"RIFF" and decoded[8:12] == b"WEBP", "not WebP"
     assert len(decoded) > 100, f"Image suspiciously small: {len(decoded)} bytes"
 
 
@@ -105,9 +113,21 @@ async def test_image_with_output_dir_returns_file_path(mock_ctx_with_output_dir)
     path_text = text_parts[0].text
     assert "saved to:" in path_text
 
-    # Verify the file actually exists and is valid PNG
+    # Verify the file actually exists and is a valid image. Gemini may return
+    # PNG or JPEG (or WebP); the saved extension must match the actual bytes.
     file_path = path_text.split("saved to: ")[1].strip()
     saved = Path(file_path)
     assert saved.exists(), f"File not found: {file_path}"
     assert saved.stat().st_size > 100, "Saved file is suspiciously small"
-    assert saved.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", "Saved file is not valid PNG"
+    head = saved.read_bytes()[:12]
+    is_png = head.startswith(b"\x89PNG\r\n\x1a\n")
+    is_jpeg = head.startswith(b"\xff\xd8\xff")
+    is_webp = head.startswith(b"RIFF") and head[8:12] == b"WEBP"
+    assert is_png or is_jpeg or is_webp, f"Saved file is not a valid image: {head!r}"
+    ext = saved.suffix.lower()
+    if is_png:
+        assert ext == ".png", f"PNG bytes but extension {ext}"
+    elif is_jpeg:
+        assert ext == ".jpg", f"JPEG bytes but extension {ext}"
+    elif is_webp:
+        assert ext == ".webp", f"WebP bytes but extension {ext}"
