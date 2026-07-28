@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from google import genai
+from google.genai import types
 from mcp.server.fastmcp import FastMCP
 
 from media_mcp.config import ServerConfig, load_config
@@ -19,7 +21,10 @@ class AppContext:
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     config = load_config()
-    client = genai.Client(api_key=config.gemini_api_key)
+    client = genai.Client(
+        api_key=config.gemini_api_key,
+        http_options=types.HttpOptions(timeout=config.request_timeout_ms),
+    )
     yield AppContext(client=client, config=config)
 
 
@@ -70,7 +75,27 @@ register_music(mcp)
 
 
 def main() -> None:
-    mcp.run()
+    # Transport is selected by env so the same entrypoint serves both the local
+    # stdio use case (default) and a networked deployment. For the streamable-HTTP
+    # service, leave MEDIA_OUTPUT_DIR UNSET so tools return media inline (base64)
+    # instead of a server-local file path the remote caller cannot read.
+    transport = os.environ.get("MEDIA_MCP_TRANSPORT", "stdio").strip().lower()
+    if transport in {"http", "streamable-http", "streamable_http"}:
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        mcp.settings.host = os.environ.get("MEDIA_MCP_HOST", "0.0.0.0")
+        mcp.settings.port = int(os.environ.get("MEDIA_MCP_PORT", "8000"))
+        # FastMCP pins DNS-rebinding protection to a localhost-only allow-list at
+        # construction time (when host still defaults to 127.0.0.1), which then
+        # rejects the in-cluster Service hostname ("Invalid Host header"). This
+        # service is a ClusterIP reached only from inside the cluster, so disable
+        # the host check rather than maintain an allow-list of every caller.
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False
+        )
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

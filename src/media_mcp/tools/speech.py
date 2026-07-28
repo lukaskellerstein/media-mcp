@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Literal
 
 from google.genai import types
@@ -86,7 +87,10 @@ def register(mcp: FastMCP) -> None:
             content_text = f"{style_instructions}: {text}"
 
         try:
-            response = app.client.models.generate_content(
+            # Offload the blocking SDK call so the event loop can keep the
+            # streamable-HTTP transport alive (see image.py for rationale).
+            response = await asyncio.to_thread(
+                app.client.models.generate_content,
                 model=gemini_model,
                 contents=content_text,
                 config=config,

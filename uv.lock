@@ -518,7 +518,7 @@ wheels = [
 
 [[package]]
 name = "media-mcp"
-version = "0.2.2"
+version = "0.2.7"
 source = { editable = "." }
 dependencies = [
     { name = "google-genai" },
@@ -535,7 +535,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "google-genai" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.0.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.0.0,<2" },
     { name = "pydantic", specifier = ">=2.0" },
 ]
 

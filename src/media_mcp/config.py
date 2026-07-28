@@ -9,6 +9,12 @@ from pydantic import BaseModel, field_validator
 class ServerConfig(BaseModel):
     gemini_api_key: str
     output_dir: str | None = None
+    # Per-request HTTP timeout for the Gemini SDK (milliseconds). Bounds how long
+    # a single generation may hang before failing with a categorized [timeout]
+    # error. Default sits just under typical MCP client tool timeouts so the
+    # server fails first and returns an actionable message instead of the client
+    # silently abandoning the call.
+    request_timeout_ms: int = 540_000
 
     @field_validator("gemini_api_key")
     @classmethod
@@ -42,4 +48,8 @@ def load_config() -> ServerConfig:
             "Error: GEMINI_API_KEY environment variable is not set.\n"
             "Set it with: export GEMINI_API_KEY='your-key-here'"
         )
-    return ServerConfig(gemini_api_key=api_key, output_dir=output_dir)
+    timeout_env = os.environ.get("MEDIA_MCP_REQUEST_TIMEOUT_MS")
+    kwargs: dict = {"gemini_api_key": api_key, "output_dir": output_dir}
+    if timeout_env:
+        kwargs["request_timeout_ms"] = int(timeout_env)
+    return ServerConfig(**kwargs)

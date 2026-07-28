@@ -90,7 +90,11 @@ def register(mcp: FastMCP) -> None:
             generate_kwargs["image"] = image_param
 
         try:
-            operation = app.client.models.generate_videos(**generate_kwargs)
+            # Blocking SDK calls run in worker threads so the event loop stays
+            # free for the streamable-HTTP transport (see image.py for rationale).
+            operation = await asyncio.to_thread(
+                lambda: app.client.models.generate_videos(**generate_kwargs)
+            )
         except Exception as e:
             return CallToolResult(
                 content=[TextContent(type="text", text=handle_gemini_error(e))],
@@ -118,7 +122,9 @@ def register(mcp: FastMCP) -> None:
                 )
                 await asyncio.sleep(POLL_INTERVAL_SECONDS)
                 elapsed += POLL_INTERVAL_SECONDS
-                operation = app.client.operations.get(operation)
+                operation = await asyncio.to_thread(
+                    app.client.operations.get, operation
+                )
         except Exception as e:
             return CallToolResult(
                 content=[TextContent(type="text", text=handle_gemini_error(e))],
@@ -128,7 +134,9 @@ def register(mcp: FastMCP) -> None:
         generated_video = operation.response.generated_videos[0]
 
         try:
-            app.client.files.download(file=generated_video.video)
+            await asyncio.to_thread(
+                app.client.files.download, file=generated_video.video
+            )
             video_bytes = generated_video.video.video_bytes
         except Exception as e:
             return CallToolResult(
