@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Literal
 
 from google.genai import types
@@ -82,12 +83,16 @@ def register(mcp: FastMCP) -> None:
                     )
                 )
 
-        tools_config = None
         if use_google_search or use_image_search:
-            tools_config = [types.Tool(google_search=types.GoogleSearch())]
+            config.tools = [types.Tool(google_search=types.GoogleSearch())]
 
         try:
-            response = app.client.models.generate_content(
+            # generate_content is a blocking SDK call; offload to a worker thread
+            # so the asyncio event loop stays free to service the streamable-HTTP
+            # transport (SSE keep-alives). Blocking it here stalls the connection
+            # and trips client-side idle timeouts long before generation finishes.
+            response = await asyncio.to_thread(
+                app.client.models.generate_content,
                 model=gemini_model,
                 contents=contents,
                 config=config,

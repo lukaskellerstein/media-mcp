@@ -92,9 +92,16 @@ def load_image_bytes(ref: str) -> tuple[bytes, str]:
         mime = header[len("data:"):].split(";", 1)[0] or "image/png"
         return decode_base64(stripped), mime
 
-    # 2. file path
+    # 2. file path — guard the stat() call. A raw base64 string longer than the
+    # OS path limit makes Path.is_file() raise OSError(ENAMETOOLONG) (it only
+    # swallows not-found-style errors), which would otherwise crash before the
+    # raw-base64 fallback below. Any OSError here just means "not a usable path".
     candidate = Path(ref.strip()).expanduser()
-    if candidate.is_file():
+    try:
+        is_file = candidate.is_file()
+    except OSError:
+        is_file = False
+    if is_file:
         data = candidate.read_bytes()
         mime = mimetypes.guess_type(candidate.name)[0] or _sniff_image_mime(data)
         return data, mime
